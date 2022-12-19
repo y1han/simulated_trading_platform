@@ -175,6 +175,14 @@ class OrderBook:
         return self._ask_vol[:11]
 
     @property
+    def bid_cum_vol_10(self):
+        return np.cumsum(self._bid_vol[:11])
+
+    @property
+    def ask_cum_vol_10(self):
+        return np.cumsum(self._ask_vol[:11])
+
+    @property
     def our_historical_orders(self):
         return [order for order in self.historical_order if order.is_ours]
 
