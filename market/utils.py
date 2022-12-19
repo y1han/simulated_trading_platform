@@ -19,27 +19,5 @@ def auction_price_match(bid_p, ask_p, bid_vol, ask_vol):
 
     return bid_p[-1], bid_vol_cum[-1]
 
-
-# 集合竞价订单提交
-def auction_order_match(order_list, remaining_vol, auction_price, latest_time):
-    remaining_list = []
-    historical_order = []
-    for order in order_list:
-        if order.quantity <= remaining_vol:
-            order.matched_quantity = order.quantity
-            order.strike_price = auction_price
-            order.time_finished = latest_time
-            historical_order.append(order)
-            remaining_vol -= order.quantity
-        elif remaining_vol == 0:
-            remaining_list.append(order)
-        else:
-            order.matched_quantity = remaining_vol
-            order.strike_price = auction_price
-            remaining_list.append(order)
-            remaining_vol = 0
-    return remaining_list, historical_order
-
-
 def find_idx_gt(search_list, search_number):
     return next(idx for idx, vol in enumerate(search_list) if vol > search_number)
