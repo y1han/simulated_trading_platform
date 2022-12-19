@@ -12,6 +12,8 @@ class Simulator:
         self.order_flow["时间"] = self.transform_time(self.date, self.order_flow["时间"])
         self.current_batch_orders = pd.DataFrame([])
         self.order_book = OrderBook(self.current_time)
+        self.break_time = [self.date + timedelta(hours=11, minutes=30, seconds=0),
+                           self.date + timedelta(hours=13, minutes=0, seconds=0)]
 
     def next_step(self, strategy_orders=None, update_interval=timedelta(seconds=3)):
         self.fetch_batch_orders(update_interval)
@@ -24,7 +26,10 @@ class Simulator:
         return self.current_time - update_interval
 
     def update_time(self, update_interval):
-        self.current_time += update_interval
+        if self.break_time[0] <= self.current_time < self.break_time[1]:
+            self.current_time = self.break_time[1]
+        else:
+            self.current_time += update_interval
 
     def fetch_batch_orders(self, update_interval):
         self.current_batch_orders = self.order_flow[
@@ -48,13 +53,13 @@ class Simulator:
                                          is_delete=(orders["委托类型"] == "D"),
                                          is_buy=(orders["委托代码"] == "B"),
                                          quantity=orders["委托数量"],
-                                         price=orders["委托价格"]/10e3,
+                                         price=orders["委托价格"] / 10e3,
                                          time_submitted=orders["时间"])
 
     @staticmethod
     def transform_time(date, time_series):
         time_series = time_series.astype(str)
-        return pd.offsets.DateOffset(years=date.year-1900, months=date.month-1, days=date.day-1) + pd.to_datetime(
+        return pd.offsets.DateOffset(years=date.year - 1900, months=date.month - 1, days=date.day - 1) + pd.to_datetime(
             time_series, format="%H%M%S%f")
 
     def reset(self):
