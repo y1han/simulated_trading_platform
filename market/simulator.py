@@ -18,7 +18,7 @@ class Simulator:
         self.order_book.latest_time = self.current_time
         self.insert_strategy_orders(strategy_orders)
         self.insert_historical_orders()
-        self.order_book.matching()
+        self.order_book.auction_matching()
         # print(self.order_book)
         self.update_time(update_interval)
         return self.current_time - update_interval

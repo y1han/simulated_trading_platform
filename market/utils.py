@@ -27,7 +27,6 @@ def auction_order_match(order_list, remaining_vol, auction_price, latest_time):
     for order in order_list:
         if order.quantity <= remaining_vol:
             order.matched_quantity = order.quantity
-            order.active = False
             order.strike_price = auction_price
             order.time_finished = latest_time
             historical_order.append(order)
@@ -38,7 +37,6 @@ def auction_order_match(order_list, remaining_vol, auction_price, latest_time):
             order.matched_quantity = remaining_vol
             order.strike_price = auction_price
             remaining_list.append(order)
-            historical_order.append(order)
             remaining_vol = 0
     return remaining_list, historical_order
 
