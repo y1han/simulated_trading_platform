@@ -14,7 +14,7 @@ end_time = datetime(year=2022, month=8, day=12) + timedelta(hours=10, minutes=50
 prev_mid = 37.45
 port = Portfolio(cash=10e6, inventory=0)
 while time < end_time:
-    t = (int(round(end_time.timestamp())) - int(round(time.timestamp()))) / int(round(end_time.timestamp()))
+    t = int(round(time.timestamp())) / int(round(end_time.timestamp()))
     optimal_ask, optimal_bid = avallaneda_stoikov(mid_price=prev_mid,
                                                   inventory=port.inventory,
                                                   sigma=1,
@@ -26,5 +26,9 @@ while time < end_time:
         (False, Order(uid=order_index + 1, is_buy=False, price=optimal_ask, quantity=100, is_ours=True))
     ])
     prev_mid = sim.order_book.mid_price
+    port.inventory = sim.order_book.our_net_holdings
+    port.cash -= sim.order_book.our_total_cost
+    port.avg_stock_cost = sim.order_book.our_total_cost / port.inventory if port.inventory > 0 else 0
+    port.historical_orders = sim.order_book.our_historical_orders
     order_index += 2
 print(sim.order_book)
