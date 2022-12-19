@@ -27,7 +27,7 @@ while time < end_time:
     ])
     prev_mid = sim.order_book.mid_price
     port.inventory = sim.order_book.our_net_holdings
-    port.cash -= sim.order_book.our_total_cost
+    port.cash = port.initial_wealth - sim.order_book.our_total_cost
     port.avg_stock_cost = sim.order_book.our_total_cost / port.inventory if port.inventory != 0 else 0
     port.historical_orders = sim.order_book.our_historical_orders
     order_index += 2
