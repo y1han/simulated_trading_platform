@@ -23,7 +23,7 @@ class Simulator:
         res = pd.read_csv(file_path + order_files[0])
         if date is None:
             date = res["MDDate"][0]
-        return res[res["MDDate"] == date].reset_index(drop=True)
+        return res[res["MDDate"] == date].reset_index(drop=True).sort_values(by=["MDDate", "MDTime"])
 
     def next_step(self, strategy_orders=None, update_interval=timedelta(seconds=3)):
         self.fetch_batch_orders(update_interval)
