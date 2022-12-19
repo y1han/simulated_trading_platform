@@ -144,11 +144,11 @@ class OrderBook:
 
     @property
     def best_ask(self):
-        return self.ask_list[0].price
+        return self.ask_list[0].price if len(self.ask_list) > 0 else 0
 
     @property
     def best_bid(self):
-        return self.bid_list[0].price
+        return self.bid_list[0].price if len(self.ask_list) > 0 else 0
 
     @property
     def bid_ask_spread(self):

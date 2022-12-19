@@ -1,30 +1,33 @@
 import market as mkt
 from market import Order
-from datetime import datetime, timedelta
+from datetime import time
 from portfolio import Portfolio
 from strategy import avallaneda_stoikov
 
 order_index = 9999000
-sim = mkt.Simulator(file_path="data/688001.SH/20220812/逐笔委托.csv")
+sim = mkt.Simulator(code=688017, date=20220701)
 
 sim.reset()
-time = datetime(year=2022, month=8, day=12) + timedelta(hours=9, minutes=15, seconds=0)
-end_time = datetime(year=2022, month=8, day=12) + timedelta(hours=10, minutes=50, seconds=0)
+current_time = time(hour=9, minute=15, second=0)
+end_time = time(hour=10, minute=50, second=0)
+current_time = (current_time.hour * 60 + current_time.minute) * 60 + current_time.second
+end_time = (end_time.hour * 60 + end_time.minute) * 60 + end_time.second
 
-prev_mid = 37.45
+prev_mid = 95
 port = Portfolio(cash=10e6, inventory=0)
-while time < end_time:
-    t = int(round(time.timestamp())) / int(round(end_time.timestamp()))
+while current_time < end_time:
+    t = current_time / end_time
     optimal_ask, optimal_bid = avallaneda_stoikov(mid_price=prev_mid,
                                                   inventory=port.inventory,
                                                   sigma=1,
                                                   t=t,
                                                   gamma=0.5,
                                                   k=0.5)
-    time = sim.next_step([
+    current_time = sim.next_step([
         (False, Order(uid=order_index, is_buy=True, price=optimal_bid, quantity=100, is_ours=True)),
         (False, Order(uid=order_index + 1, is_buy=False, price=optimal_ask, quantity=100, is_ours=True))
     ])
+    current_time = (current_time.hour * 60 + current_time.minute) * 60 + current_time.second
     prev_mid = sim.order_book.mid_price
     port.inventory = sim.order_book.our_net_holdings
     port.cash = port.initial_wealth - sim.order_book.our_total_cost
