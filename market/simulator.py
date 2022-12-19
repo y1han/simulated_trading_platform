@@ -44,7 +44,7 @@ class Simulator:
                                              is_buy=order.is_buy,
                                              quantity=order.quantity,
                                              price=order.price,
-                                             time_submitted=order.time_submitted,
+                                             time_submitted=self.current_time,
                                              is_ours=True)
 
     def insert_historical_orders(self):

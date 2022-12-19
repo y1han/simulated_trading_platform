@@ -23,7 +23,7 @@ class Order:
     is_buy: bool
     quantity: int
     price: float
-    time_submitted: datetime.datetime
+    time_submitted: Optional[datetime.datetime] = None
     strike_price: Optional[float] = None
     matched_quantity: int = 0
     time_finished: Optional[datetime.datetime] = None

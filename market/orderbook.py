@@ -93,8 +93,8 @@ class OrderBook:
                         ask.matched_quantity += vol
                         bid.strike_price = self._update_strike_price(bid, auction_price, vol)
                         ask.strike_price = self._update_strike_price(ask, auction_price, vol)
-                        self.historical_deal.loc[len(self.historical_deal)] = [self.latest_time, auction_price, vol,
-                                                                               bid.uid, ask.uid]
+                        self.historical_deal.loc[len(self.historical_deal)] = [self.latest_time, auction_price,
+                                                                               vol, bid.uid, ask.uid]
                         remaining_vol -= vol
                     elif remaining_vol == 0:
                         break
@@ -103,8 +103,8 @@ class OrderBook:
                         ask.matched_quantity += remaining_vol
                         bid.strike_price = self._update_strike_price(bid, auction_price, vol)
                         ask.strike_price = self._update_strike_price(ask, auction_price, vol)
-                        self.historical_deal.loc[len(self.historical_deal)] = [self.latest_time, auction_price, remaining_vol,
-                                                                               bid.uid, ask.uid]
+                        self.historical_deal.loc[len(self.historical_deal)] = [self.latest_time, auction_price,
+                                                                               remaining_vol, bid.uid, ask.uid]
                         remaining_vol = 0
 
                     if ask.remaining_quantity == 0:
@@ -154,6 +154,14 @@ class OrderBook:
     @property
     def ask_vol_10(self):
         return self._ask_vol[:11]
+
+    @property
+    def our_historical_orders(self):
+        return [order for order in self.historical_order if order.is_ours]
+
+    @property
+    def our_deals(self):
+        return self.historical_deal.where("bid_uid")
 
     @property
     def _bid_prices(self):
