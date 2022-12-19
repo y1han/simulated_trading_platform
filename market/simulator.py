@@ -5,8 +5,8 @@ from .orderbook import OrderBook
 
 
 class Simulator:
-    def __init__(self, code, date=None, encoding="UTF-8"):
-        self.order_flow = self.read_order_flow(code, encoding, date)
+    def __init__(self, code, file_path="./data/", date=None):
+        self.order_flow = self.read_order_flow(code, file_path, date)
         self.submitted_order_flow = []
         self.date = datetime.strptime(str(self.order_flow["MDDate"][0]), '%Y%m%d')
         self.current_time = self.date + timedelta(hours=9, minutes=15, seconds=0)
@@ -17,10 +17,10 @@ class Simulator:
                            self.date + timedelta(hours=13, minutes=0, seconds=0)]
 
     @staticmethod
-    def read_order_flow(code, encoding, date=None):
-        file_path = "./data/" + str(code) + "/"
+    def read_order_flow(code, file_path="", date=None):
+        file_path = file_path + str(code) + "/"
         order_files = [item for item in os.listdir(file_path) if "Order_0" in item]
-        res = pd.read_csv(file_path + order_files[0], encoding=encoding)
+        res = pd.read_csv(file_path + order_files[0])
         if date is None:
             date = res["MDDate"][0]
         return res[res["MDDate"] == date].reset_index(drop=True)
