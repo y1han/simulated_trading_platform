@@ -18,7 +18,7 @@ class Simulator:
 
     @staticmethod
     def read_order_flow(code, encoding, date=None):
-        file_path = "data/" + str(code) + "/"
+        file_path = "./data/" + str(code) + "/"
         order_files = [item for item in os.listdir(file_path) if "Order_0" in item]
         res = pd.read_csv(file_path + order_files[0], encoding=encoding)
         if date is None:
@@ -34,7 +34,7 @@ class Simulator:
             self.order_book.auction_matching()
         # print(self.order_book)
         self.update_time(update_interval)
-        return self.current_time - update_interval
+        return (self.current_time - update_interval).time()
 
     def update_time(self, update_interval):
         if self.break_time[0] <= self.current_time < self.break_time[1]:
