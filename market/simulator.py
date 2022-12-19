@@ -13,8 +13,8 @@ class Simulator:
         self.order_flow["MDTime"] = self.transform_time(self.date, self.order_flow["MDTime"])
         self.current_batch_orders = pd.DataFrame([])
         self.order_book = OrderBook(self.current_time)
-        self.break_time = [self.date + timedelta(hours=11, minutes=30, seconds=0),
-                           self.date + timedelta(hours=13, minutes=0, seconds=0)]
+        self._break_time = [self.date + timedelta(hours=11, minutes=30, seconds=0),
+                            self.date + timedelta(hours=13, minutes=0, seconds=0)]
 
     @staticmethod
     def read_order_flow(code, file_path="", date=None):
@@ -37,8 +37,8 @@ class Simulator:
         return (self.current_time - update_interval).time()
 
     def update_time(self, update_interval):
-        if self.break_time[0] <= self.current_time < self.break_time[1]:
-            self.current_time = self.break_time[1]
+        if self._break_time[0] <= self.current_time < self._break_time[1]:
+            self.current_time = self._break_time[1]
         else:
             self.current_time += update_interval
 
