@@ -30,9 +30,9 @@ class Simulator:
         self.order_book.latest_time = self.current_time
         self.insert_strategy_orders(strategy_orders)
         self.insert_historical_orders()
-        if len(self.current_batch_orders) > 0:
+        if len(self.current_batch_orders) > 0 or strategy_orders is not None:
             self.order_book.auction_matching()
-        # print(self.order_book)
+            self.order_book.update_record()
         self.update_time(update_interval)
         return (self.current_time - update_interval).time()
 
@@ -40,6 +40,8 @@ class Simulator:
         if self._break_time[0] <= self.current_time < self._break_time[1]:
             self.current_time = self._break_time[1]
         else:
+            if self.current_time.minute in [0, 30] and self.current_time.second == 0:
+                print(self.current_time)
             self.current_time += update_interval
 
     def fetch_batch_orders(self, update_interval):

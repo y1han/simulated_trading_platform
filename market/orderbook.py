@@ -9,9 +9,15 @@ class OrderBook:
         self.bid_list = []  # 买盘列表
         self.ask_list = []  # 卖盘列表
         self.historical_order = []  # 历史订单列表
-        self.historical_deal = pd.DataFrame([],
-                                            columns=["time", "price", "vol", "bid_uid", "ask_uid",
-                                                     "is_ours", "our_direction"])  # 成交序列
+        self.historical_transaction = pd.DataFrame([],
+                                                   columns=["time", "price", "vol", "bid_uid", "ask_uid",
+                                                            "is_ours", "our_direction"])  # 成交序列
+        self.historical_orderbook = pd.DataFrame([],
+                                                 columns=["time"] +
+                                                         ["bid_p_" + str(i) for i in range(1, 11)] +
+                                                         ["bid_v_" + str(i) for i in range(1, 11)] +
+                                                         ["ask_p_" + str(i) for i in range(1, 11)] +
+                                                         ["ask_v_" + str(i) for i in range(1, 11)])
         self.latest_time = current_time
         self._PRE_AUCTION_TIME = current_time.replace(hour=9, minute=15, second=0)
         self._PRE_AUCTION_MATCH_TIME = current_time.replace(hour=9, minute=25, second=0)
@@ -50,23 +56,29 @@ class OrderBook:
                 bid.matched_quantity += vol
                 ask.matched_quantity += vol
 
-                is_ours, our_direction = self.check_our_orders(ask, bid)
+                is_ours, our_direction = check_our_orders(ask, bid)
                 if bid.price == ask.price:
-                    bid.strike_price = self._update_strike_price(bid, bid.price, vol)
-                    ask.strike_price = self._update_strike_price(ask, bid.price, vol)
-                    self.historical_deal.loc[len(self.historical_deal)] = [time_submitted, bid.price, vol, bid.uid,
-                                                                           ask.uid, is_ours, our_direction]
+                    bid.strike_price = update_strike_price(bid, bid.price, vol)
+                    ask.strike_price = update_strike_price(ask, bid.price, vol)
+                    self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, bid.price, vol,
+                                                                                         bid.uid,
+                                                                                         ask.uid, is_ours,
+                                                                                         our_direction]
                 elif bid.price > ask.price:
                     if bid.time_submitted > ask.time_submitted:  # Bid比Ask晚
-                        bid.strike_price = self._update_strike_price(bid, ask.price, vol)
-                        ask.strike_price = self._update_strike_price(ask, ask.price, vol)
-                        self.historical_deal.loc[len(self.historical_deal)] = [time_submitted, ask.price, vol, bid.uid,
-                                                                               ask.uid, is_ours, our_direction]
+                        bid.strike_price = update_strike_price(bid, ask.price, vol)
+                        ask.strike_price = update_strike_price(ask, ask.price, vol)
+                        self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, ask.price,
+                                                                                             vol, bid.uid,
+                                                                                             ask.uid, is_ours,
+                                                                                             our_direction]
                     else:
-                        bid.strike_price = self._update_strike_price(bid, bid.price, vol)
-                        ask.strike_price = self._update_strike_price(ask, bid.price, vol)
-                        self.historical_deal.loc[len(self.historical_deal)] = [time_submitted, bid.price, vol, bid.uid,
-                                                                               ask.uid, is_ours, our_direction]
+                        bid.strike_price = update_strike_price(bid, bid.price, vol)
+                        ask.strike_price = update_strike_price(ask, bid.price, vol)
+                        self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, bid.price,
+                                                                                             vol, bid.uid,
+                                                                                             ask.uid, is_ours,
+                                                                                             our_direction]
                 if bid.remaining_quantity == 0:
                     bid.time_finished = time_submitted
                     self.remove_order(bid.uid, bid.is_buy)
@@ -91,26 +103,29 @@ class OrderBook:
                     ask = self.ask_list[0]
                     vol = min(bid.remaining_quantity, ask.remaining_quantity)
 
-                    is_ours, our_direction = self.check_our_orders(ask, bid)
+                    is_ours, our_direction = check_our_orders(ask, bid)
                     if vol <= remaining_vol:
                         bid.matched_quantity += vol
                         ask.matched_quantity += vol
-                        bid.strike_price = self._update_strike_price(bid, auction_price, vol)
-                        ask.strike_price = self._update_strike_price(ask, auction_price, vol)
-                        self.historical_deal.loc[len(self.historical_deal)] = [self.latest_time, auction_price,
-                                                                               vol, bid.uid, ask.uid,
-                                                                               is_ours, our_direction]
+                        bid.strike_price = update_strike_price(bid, auction_price, vol)
+                        ask.strike_price = update_strike_price(ask, auction_price, vol)
+                        self.historical_transaction.loc[len(self.historical_transaction)] = [self.latest_time,
+                                                                                             auction_price,
+                                                                                             vol, bid.uid, ask.uid,
+                                                                                             is_ours, our_direction]
                         remaining_vol -= vol
                     elif remaining_vol == 0:
                         break
                     else:
                         bid.matched_quantity += remaining_vol
                         ask.matched_quantity += remaining_vol
-                        bid.strike_price = self._update_strike_price(bid, auction_price, vol)
-                        ask.strike_price = self._update_strike_price(ask, auction_price, vol)
-                        self.historical_deal.loc[len(self.historical_deal)] = [self.latest_time, auction_price,
-                                                                               remaining_vol, bid.uid, ask.uid,
-                                                                               is_ours, our_direction]
+                        bid.strike_price = update_strike_price(bid, auction_price, vol)
+                        ask.strike_price = update_strike_price(ask, auction_price, vol)
+                        self.historical_transaction.loc[len(self.historical_transaction)] = [self.latest_time,
+                                                                                             auction_price,
+                                                                                             remaining_vol, bid.uid,
+                                                                                             ask.uid,
+                                                                                             is_ours, our_direction]
                         remaining_vol = 0
 
                     if ask.remaining_quantity == 0:
@@ -125,19 +140,6 @@ class OrderBook:
                 self.historical_order.append(bid)
                 self.sort()
 
-    @staticmethod
-    def check_our_orders(ask, bid):
-        is_ours = False
-        our_direction = 0
-        if ask.is_ours:
-            is_ours = True
-            our_direction = -1
-        elif bid.is_ours:
-            is_ours = True
-            our_direction = 1
-
-        return is_ours, our_direction
-
     def sort(self):
         self.bid_list.sort(key=lambda x: (-x.price, x.time_submitted))
         self.ask_list.sort(key=lambda x: (x.price, x.time_submitted))
@@ -148,7 +150,7 @@ class OrderBook:
 
     @property
     def best_bid(self):
-        return self.bid_list[0].price if len(self.ask_list) > 0 else 0
+        return self.bid_list[0].price if len(self.bid_list) > 0 else 0
 
     @property
     def bid_ask_spread(self):
@@ -160,27 +162,27 @@ class OrderBook:
 
     @property
     def bid_prices_10(self):
-        return self._bid_prices[:11]
+        return self._bid_prices[:10]
 
     @property
     def ask_prices_10(self):
-        return self._ask_prices[:11]
+        return self._ask_prices[:10]
 
     @property
     def bid_vol_10(self):
-        return self._bid_vol[:11]
+        return self._bid_vol[:10]
 
     @property
     def ask_vol_10(self):
-        return self._ask_vol[:11]
+        return self._ask_vol[:10]
 
     @property
     def bid_cum_vol_10(self):
-        return np.cumsum(self._bid_vol[:11])
+        return list(np.cumsum(self._bid_vol[:10]))
 
     @property
     def ask_cum_vol_10(self):
-        return np.cumsum(self._ask_vol[:11])
+        return list(np.cumsum(self._ask_vol[:10]))
 
     @property
     def our_historical_orders(self):
@@ -188,7 +190,7 @@ class OrderBook:
 
     @property
     def our_deals(self):
-        return self.historical_deal[self.historical_deal["is_ours"]]
+        return self.historical_transaction[self.historical_transaction["is_ours"]]
 
     @property
     def our_net_holdings(self):
@@ -215,10 +217,14 @@ class OrderBook:
     def _ask_vol(self):
         return [sum([i.remaining_quantity for i in self.ask_list if i.price == p]) for p in self._ask_prices]
 
-    @staticmethod
-    def _update_strike_price(order, price, vol):
-        return price if order.strike_price is None \
-            else (order.strike_price * order.matched_quantity + order.price * vol) / (order.matched_quantity + vol)
+    def update_record(self):
+        record = [np.nan] * 41
+        record[0] = self.latest_time
+        record[1: 1+len(self.bid_prices_10)] = self.bid_prices_10
+        record[11: 11+len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
+        record[21: 21+len(self.ask_prices_10)] = self.ask_prices_10
+        record[31: 31+len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
+        self.historical_orderbook.loc[len(self.historical_orderbook)] = record
 
     def get_order(self, uid, is_buy):
         if is_buy:

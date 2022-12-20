@@ -5,11 +5,11 @@ from portfolio import Portfolio
 from strategy import avallaneda_stoikov
 
 order_index = 9999000
-sim = mkt.Simulator(code=688017, date=20220701)
+sim = mkt.Simulator(code=688017, date=20220704)
 
 sim.reset()
 current_time = time(hour=9, minute=15, second=0)
-end_time = time(hour=10, minute=50, second=0)
+end_time = time(hour=11, minute=30, second=0)
 current_time = (current_time.hour * 60 + current_time.minute) * 60 + current_time.second
 end_time = (end_time.hour * 60 + end_time.minute) * 60 + end_time.second
 
