@@ -1,14 +1,17 @@
 import matplotlib.pyplot as plt
-from datetime import time
+from datetime import time, datetime
 from market import OrderBook
 
 OPEN_TIME = time(9, 30, 0)
 CLOSE_TIME = time(14, 57, 0)
 
 
-def draw_spread(orderbook: OrderBook):
-    plt.plot(orderbook.bid_prices_10, orderbook.bid_cum_vol_10)
-    plt.plot(orderbook.ask_prices_10, orderbook.ask_cum_vol_10)
+def draw_spread(orderbook: OrderBook, given_time: time):
+    df = orderbook.historical_orderbook.set_index("time")
+    given_time = df.index[0].replace(hour=given_time.hour, minute=given_time.minute, second=given_time.second)
+    spread = df.iloc[df.index.get_loc(given_time, method='nearest')]
+    plt.plot(list(spread[0:10]), list(spread[10:20]))
+    plt.plot(list(spread[20:30]), list(spread[30:40]))
     plt.show()
 
 
