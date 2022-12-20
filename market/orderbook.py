@@ -177,6 +177,14 @@ class OrderBook:
         return self._ask_vol[:10]
 
     @property
+    def total_bid_vol(self):
+        return sum(self._bid_vol)
+
+    @property
+    def total_ask_vol(self):
+        return sum(self._ask_vol)
+
+    @property
     def bid_cum_vol_10(self):
         return list(np.cumsum(self._bid_vol[:10]))
 
