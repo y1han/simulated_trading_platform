@@ -19,7 +19,7 @@ class Simulator:
     @staticmethod
     def read_order_flow(code, file_path="", date=None):
         file_path = file_path + str(code) + "/"
-        order_files = [item for item in os.listdir(file_path) if "Order_0" in item]
+        order_files = [item for item in os.listdir(file_path) if "_O" in item]
         res = pd.read_csv(file_path + order_files[0])
         if date is None:
             date = res["MDDate"][0]
@@ -52,13 +52,19 @@ class Simulator:
     def insert_strategy_orders(self, strategy_orders):
         if strategy_orders is not None:
             for is_delete, order in strategy_orders:
-                self.order_book.submit_order(uid=order.uid,
-                                             is_delete=is_delete,
-                                             is_buy=order.is_buy,
-                                             quantity=order.quantity,
-                                             price=order.price,
-                                             time_submitted=self.current_time,
-                                             is_ours=True)
+                if is_delete:
+                    self.order_book.submit_order(uid=order.uid,
+                                                 is_delete=is_delete,
+                                                 is_buy=order.is_buy,
+                                                 time_submitted=self.current_time)
+                else:
+                    self.order_book.submit_order(uid=order.uid,
+                                                 is_delete=is_delete,
+                                                 is_buy=order.is_buy,
+                                                 time_submitted=self.current_time,
+                                                 quantity=order.quantity,
+                                                 price=order.price,
+                                                 is_ours=True)
 
     def insert_historical_orders(self):
         for _, orders in self.current_batch_orders.iterrows():

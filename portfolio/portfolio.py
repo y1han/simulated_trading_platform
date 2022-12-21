@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from market import Order
 
 
@@ -10,6 +10,8 @@ class Portfolio:
     avg_stock_cost: Optional[float] = 0
     financed_value: Optional[float] = 0
     historical_orders: Optional[List[Order]] = None
+    active_orders: Optional[List[Tuple[int, bool]]] = None
+    order_index: int = -1
 
     def __post_init__(self):
         self.initial_wealth = self.net_assets

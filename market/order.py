@@ -21,8 +21,8 @@ class Order:
     """
     uid: int
     is_buy: bool
-    quantity: int
-    price: float
+    quantity: int = 0
+    price: float = 0
     time_submitted: Optional[datetime.datetime] = None
     strike_price: Optional[float] = None
     matched_quantity: int = 0

@@ -25,10 +25,10 @@ class OrderBook:
         self._AFTER_AUCTION_TIME = current_time.replace(hour=14, minute=57, second=0)
         self._AFTER_AUCTION_MATCH_TIME = current_time.replace(hour=15, minute=00, second=0)
 
-    def submit_order(self, uid, is_delete, is_buy, quantity, price, time_submitted, is_ours=False):
+    def submit_order(self, uid, is_delete, is_buy, time_submitted, quantity=0, price=0, is_ours=False):
         if is_delete:
             self.remove_order(uid=uid, is_buy=is_buy)
-        else:
+        elif quantity > 0:
             if is_buy:
                 self.bid_list.append(Order(uid=uid, is_buy=is_buy, quantity=quantity, price=price,
                                            time_submitted=time_submitted, is_ours=is_ours))
@@ -57,43 +57,27 @@ class OrderBook:
                 ask.matched_quantity += vol
 
                 is_ours, our_direction = check_our_orders(ask, bid)
-                if bid.price == ask.price:
-                    bid.strike_price = update_strike_price(bid, bid.price, vol)
-                    ask.strike_price = update_strike_price(ask, bid.price, vol)
-                    self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, bid.price, vol,
-                                                                                         bid.uid,
+                if bid.time_submitted > ask.time_submitted:  # Bid比Ask晚, 主买
+                    bid.strike_price = update_strike_price(bid, ask.price, vol)
+                    ask.strike_price = update_strike_price(ask, ask.price, vol)
+                    self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, ask.price,
+                                                                                         vol, bid.uid,
                                                                                          ask.uid, is_ours,
                                                                                          our_direction]
-                elif bid.price > ask.price:
-                    if bid.time_submitted > ask.time_submitted:  # Bid比Ask晚
-                        bid.strike_price = update_strike_price(bid, ask.price, vol)
-                        ask.strike_price = update_strike_price(ask, ask.price, vol)
-                        self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, ask.price,
-                                                                                             vol, bid.uid,
-                                                                                             ask.uid, is_ours,
-                                                                                             our_direction]
-                    else:
-                        bid.strike_price = update_strike_price(bid, bid.price, vol)
-                        ask.strike_price = update_strike_price(ask, bid.price, vol)
-                        self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, bid.price,
-                                                                                             vol, bid.uid,
-                                                                                             ask.uid, is_ours,
-                                                                                             our_direction]
-                if bid.remaining_quantity == 0:
-                    bid.time_finished = time_submitted
-                    self.remove_order(bid.uid, bid.is_buy)
-                    self.historical_order.append(bid)
-                if ask.remaining_quantity == 0:
-                    ask.time_finished = time_submitted
-                    self.remove_order(ask.uid, ask.is_buy)
-                    self.historical_order.append(ask)
-                self.sort()
+                else:  # 主卖
+                    bid.strike_price = update_strike_price(bid, bid.price, vol)
+                    ask.strike_price = update_strike_price(ask, bid.price, vol)
+                    self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, bid.price,
+                                                                                         vol, bid.uid,
+                                                                                         ask.uid, is_ours,
+                                                                                         our_direction]
+                self._postprocess_order(bid, time_submitted)
+                self._postprocess_order(ask, time_submitted)
 
     def _auction_process(self):
         auction_price, auction_vol = auction_price_match(bid_p=self._bid_prices, ask_p=self._ask_prices,
                                                          bid_vol=self._bid_vol, ask_vol=self._ask_vol)
         self.auction_order_match(remaining_vol=auction_vol, auction_price=auction_price)
-        self.sort()
 
     # 集合竞价订单提交
     def auction_order_match(self, remaining_vol, auction_price):
@@ -104,41 +88,29 @@ class OrderBook:
                     vol = min(bid.remaining_quantity, ask.remaining_quantity)
 
                     is_ours, our_direction = check_our_orders(ask, bid)
-                    if vol <= remaining_vol:
-                        bid.matched_quantity += vol
-                        ask.matched_quantity += vol
-                        bid.strike_price = update_strike_price(bid, auction_price, vol)
-                        ask.strike_price = update_strike_price(ask, auction_price, vol)
-                        self.historical_transaction.loc[len(self.historical_transaction)] = [self.latest_time,
-                                                                                             auction_price,
-                                                                                             vol, bid.uid, ask.uid,
-                                                                                             is_ours, our_direction]
-                        remaining_vol -= vol
-                    elif remaining_vol == 0:
+                    if remaining_vol == 0:
                         break
                     else:
-                        bid.matched_quantity += remaining_vol
-                        ask.matched_quantity += remaining_vol
-                        bid.strike_price = update_strike_price(bid, auction_price, vol)
-                        ask.strike_price = update_strike_price(ask, auction_price, vol)
+                        matched_vol = min(vol, remaining_vol)
+                        bid.matched_quantity += matched_vol
+                        ask.matched_quantity += matched_vol
+                        bid.strike_price = update_strike_price(bid, auction_price, matched_vol)
+                        ask.strike_price = update_strike_price(ask, auction_price, matched_vol)
                         self.historical_transaction.loc[len(self.historical_transaction)] = [self.latest_time,
-                                                                                             auction_price,
-                                                                                             remaining_vol, bid.uid,
-                                                                                             ask.uid,
+                                                                                             auction_price, matched_vol,
+                                                                                             bid.uid, ask.uid,
                                                                                              is_ours, our_direction]
-                        remaining_vol = 0
+                        remaining_vol -= matched_vol
 
-                    if ask.remaining_quantity == 0:
-                        ask.time_finished = self.latest_time
-                        self.remove_order(ask.uid, ask.is_buy)
-                        self.historical_order.append(ask)
-                        self.sort()
+                    self._postprocess_order(ask, self.latest_time)
+            self._postprocess_order(bid, self.latest_time)
 
-            if bid.remaining_quantity == 0:
-                bid.time_finished = self.latest_time
-                self.remove_order(bid.uid, bid.is_buy)
-                self.historical_order.append(bid)
-                self.sort()
+    def _postprocess_order(self, order, time_submitted):
+        if order.remaining_quantity == 0:
+            order.time_finished = time_submitted
+            self.remove_order(order.uid, order.is_buy)
+            self.historical_order.append(order)
+        self.sort()
 
     def sort(self):
         self.bid_list.sort(key=lambda x: (-x.price, x.time_submitted))
@@ -210,6 +182,11 @@ class OrderBook:
                    self.our_deals.get("our_direction", 0))
 
     @property
+    def our_active_orders(self):
+        return [(i.uid, True) for i in self.bid_list if i.is_ours] + \
+               [(i.uid, False) for i in self.ask_list if i.is_ours]
+
+    @property
     def _bid_prices(self):
         return sorted(list(set([i.price for i in self.bid_list])), reverse=True)
 
@@ -228,10 +205,10 @@ class OrderBook:
     def update_record(self):
         record = [np.nan] * 41
         record[0] = self.latest_time
-        record[1: 1+len(self.bid_prices_10)] = self.bid_prices_10
-        record[11: 11+len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
-        record[21: 21+len(self.ask_prices_10)] = self.ask_prices_10
-        record[31: 31+len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
+        record[1: 1 + len(self.bid_prices_10)] = self.bid_prices_10
+        record[11: 11 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
+        record[21: 21 + len(self.ask_prices_10)] = self.ask_prices_10
+        record[31: 31 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
         self.historical_orderbook.loc[len(self.historical_orderbook)] = record
 
     def get_order(self, uid, is_buy):
