@@ -28,6 +28,9 @@ class OrderBook:
     def submit_order(self, uid, is_delete, is_buy, time_submitted, quantity=0, price=0, is_ours=False):
         if is_delete:
             self.remove_order(uid=uid, is_buy=is_buy)
+            existing_order = self.get_order(uid, is_buy)
+            if existing_order.remaining_quantity > 0:
+                self.historical_order.append(existing_order)
         elif quantity > 0:
             if is_buy:
                 self.bid_list.append(Order(uid=uid, is_buy=is_buy, quantity=quantity, price=price,
