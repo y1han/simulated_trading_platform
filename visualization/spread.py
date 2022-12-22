@@ -10,8 +10,8 @@ def draw_spread(orderbook: OrderBook, given_time: time):
     df = orderbook.historical_orderbook.set_index("time")
     given_time = df.index[0].replace(hour=given_time.hour, minute=given_time.minute, second=given_time.second)
     spread = df.iloc[df.index.get_loc(given_time, method='nearest')]
-    plt.plot(list(spread[0:10]), list(spread[10:20]))
-    plt.plot(list(spread[20:30]), list(spread[30:40]))
+    plt.plot(list(spread[4:14]), list(spread[14:24]))
+    plt.plot(list(spread[24:34]), list(spread[34:44]))
     plt.show()
 
 

@@ -14,11 +14,13 @@ class OrderBook:
                                                             "is_ours", "our_direction"])  # 成交序列
         self.historical_orderbook = pd.DataFrame([],
                                                  columns=["time"] +
+                                                         ["open", "close", "high", "low"] +
                                                          ["bid_p_" + str(i) for i in range(1, 11)] +
                                                          ["bid_v_" + str(i) for i in range(1, 11)] +
                                                          ["ask_p_" + str(i) for i in range(1, 11)] +
                                                          ["ask_v_" + str(i) for i in range(1, 11)])
         self.latest_time = current_time
+        self.period_prices = []
         self._PRE_AUCTION_TIME = current_time.replace(hour=9, minute=15, second=0)
         self._PRE_AUCTION_MATCH_TIME = current_time.replace(hour=9, minute=25, second=0)
         self._OPEN_TIME = current_time.replace(hour=9, minute=30, second=0)
@@ -27,9 +29,9 @@ class OrderBook:
 
     def submit_order(self, uid, is_delete, is_buy, time_submitted, quantity=0, price=0, is_ours=False):
         if is_delete:
-            self.remove_order(uid=uid, is_buy=is_buy)
-            existing_order = self.get_order(uid, is_buy)
-            if existing_order.remaining_quantity > 0:
+            if self.get_historical_order(uid) is None:
+                existing_order = self.get_order(uid, is_buy)
+                self.remove_order(uid=uid, is_buy=is_buy)
                 self.historical_order.append(existing_order)
         elif quantity > 0:
             if is_buy:
@@ -51,29 +53,25 @@ class OrderBook:
 
     def trade_matching(self, time_submitted):  # 连续竞价撮合
         if self._OPEN_TIME <= self.latest_time < self._AFTER_AUCTION_TIME:
+            self.period_prices = [self.period_prices[-1]] if len(self.period_prices) > 0 else []
             while self.best_bid >= self.best_ask:
                 bid = self.bid_list[0]
                 ask = self.ask_list[0]
 
                 vol = min(bid.remaining_quantity, ask.remaining_quantity)
-                bid.matched_quantity += vol
-                ask.matched_quantity += vol
 
                 is_ours, our_direction = check_our_orders(ask, bid)
-                if bid.time_submitted > ask.time_submitted:  # Bid比Ask晚, 主买
-                    bid.strike_price = update_strike_price(bid, ask.price, vol)
-                    ask.strike_price = update_strike_price(ask, ask.price, vol)
-                    self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, ask.price,
-                                                                                         vol, bid.uid,
-                                                                                         ask.uid, is_ours,
-                                                                                         our_direction]
-                else:  # 主卖
-                    bid.strike_price = update_strike_price(bid, bid.price, vol)
-                    ask.strike_price = update_strike_price(ask, bid.price, vol)
-                    self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, bid.price,
-                                                                                         vol, bid.uid,
-                                                                                         ask.uid, is_ours,
-                                                                                         our_direction]
+                trade_price = ask.price if bid.time_submitted > ask.time_submitted else bid.price
+
+                bid.strike_price = update_strike_price(bid, trade_price, vol)
+                ask.strike_price = update_strike_price(ask, trade_price, vol)
+                self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, trade_price,
+                                                                                     vol, bid.uid,
+                                                                                     ask.uid, is_ours,
+                                                                                     our_direction]
+                self.period_prices.append(trade_price)
+                bid.matched_quantity += vol
+                ask.matched_quantity += vol
                 self._postprocess_order(bid, time_submitted)
                 self._postprocess_order(ask, time_submitted)
 
@@ -86,6 +84,7 @@ class OrderBook:
     def auction_order_match(self, remaining_vol, auction_price):
         for bid in self.bid_list:
             if bid.price >= auction_price:
+                self.period_prices = [self.period_prices[-1]] if len(self.period_prices) > 0 else []
                 while bid.remaining_quantity != 0:
                     ask = self.ask_list[0]
                     vol = min(bid.remaining_quantity, ask.remaining_quantity)
@@ -95,10 +94,11 @@ class OrderBook:
                         break
                     else:
                         matched_vol = min(vol, remaining_vol)
-                        bid.matched_quantity += matched_vol
-                        ask.matched_quantity += matched_vol
                         bid.strike_price = update_strike_price(bid, auction_price, matched_vol)
                         ask.strike_price = update_strike_price(ask, auction_price, matched_vol)
+                        bid.matched_quantity += matched_vol
+                        ask.matched_quantity += matched_vol
+                        self.period_prices.append(auction_price)
                         self.historical_transaction.loc[len(self.historical_transaction)] = [self.latest_time,
                                                                                              auction_price, matched_vol,
                                                                                              bid.uid, ask.uid,
@@ -180,9 +180,18 @@ class OrderBook:
         return sum(self.our_deals.get("vol", [0]) * self.our_deals.get("our_direction", 0))
 
     @property
-    def our_total_cost(self):
-        return sum(self.our_deals.get("vol", [0]) * self.our_deals.get("price", 0) *
-                   self.our_deals.get("our_direction", 0))
+    def our_gross_cost(self):
+        return -sum(self.our_deals.get("vol", [0]) * self.our_deals.get("price", 0) *
+                    self.our_deals.get("our_direction", 0))
+
+    @property
+    def our_avg_cost(self):
+        bid_ls = self.our_deals[self.our_deals["our_direction"] == 1]
+        ask_ls = self.our_deals[self.our_deals["our_direction"] == -1]
+        return (
+            sum(bid_ls.get("vol", [0]) * bid_ls.get("price", 0)) / sum(bid_ls.get("vol", [1])),
+            sum(ask_ls.get("vol", [0]) * ask_ls.get("price", 0)) / sum(ask_ls.get("vol", [1]))
+        )
 
     @property
     def our_active_orders(self):
@@ -206,12 +215,17 @@ class OrderBook:
         return [sum([i.remaining_quantity for i in self.ask_list if i.price == p]) for p in self._ask_prices]
 
     def update_record(self):
-        record = [np.nan] * 41
+        record = [np.nan] * 45
         record[0] = self.latest_time
-        record[1: 1 + len(self.bid_prices_10)] = self.bid_prices_10
-        record[11: 11 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
-        record[21: 21 + len(self.ask_prices_10)] = self.ask_prices_10
-        record[31: 31 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
+        if len(self.period_prices) > 0:
+            record[1] = self.period_prices[0]
+            record[2] = self.period_prices[-1]
+            record[3] = max(self.period_prices)
+            record[4] = min(self.period_prices)
+        record[5: 5 + len(self.bid_prices_10)] = self.bid_prices_10
+        record[15: 15 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
+        record[25: 25 + len(self.ask_prices_10)] = self.ask_prices_10
+        record[35: 35 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
         self.historical_orderbook.loc[len(self.historical_orderbook)] = record
 
     def get_order(self, uid, is_buy):
@@ -219,6 +233,13 @@ class OrderBook:
             return [i for i in self.bid_list if i.uid == uid][0]
         else:
             return [i for i in self.ask_list if i.uid == uid][0]
+
+    def get_historical_order(self, uid):
+        res = [i for i in self.historical_order if i.uid == uid]
+        if len(res) == 0:
+            return None
+        else:
+            return res[0]
 
     def remove_order(self, uid, is_buy):
         if is_buy:

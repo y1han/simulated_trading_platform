@@ -27,8 +27,8 @@ while current_time < end_time:
     current_time = (current_time.hour * 60 + current_time.minute) * 60 + current_time.second
     prev_mid = sim.order_book.mid_price
     port.inventory = sim.order_book.our_net_holdings
-    port.cash = port.initial_wealth - sim.order_book.our_total_cost
-    port.avg_stock_cost = sim.order_book.our_total_cost / port.inventory if port.inventory != 0 else 0
+    port.cash = port.initial_wealth + sim.order_book.our_gross_cost
+    port.avg_stock_cost = sim.order_book.our_avg_cost
     port.historical_orders = sim.order_book.our_historical_orders
     port.active_orders = sim.order_book.our_active_orders
     order_index -= 2
