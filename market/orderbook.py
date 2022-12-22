@@ -18,7 +18,9 @@ class OrderBook:
                                                          ["bid_p_" + str(i) for i in range(1, 11)] +
                                                          ["bid_v_" + str(i) for i in range(1, 11)] +
                                                          ["ask_p_" + str(i) for i in range(1, 11)] +
-                                                         ["ask_v_" + str(i) for i in range(1, 11)])
+                                                         ["ask_v_" + str(i) for i in range(1, 11)] +
+                                                         ["buy_volume", "sell_volume"]
+                                                 )
         self.latest_time = current_time
         self.period_prices = []
         self._PRE_AUCTION_TIME = current_time.replace(hour=9, minute=15, second=0)
@@ -215,8 +217,8 @@ class OrderBook:
     def _ask_vol(self):
         return [sum([i.remaining_quantity for i in self.ask_list if i.price == p]) for p in self._ask_prices]
 
-    def update_record(self):
-        record = [np.nan] * 45
+    def update_record(self, update_interval):
+        record = [np.nan] * 47
         record[0] = self.latest_time
         if len(self.period_prices) > 0:
             record[1] = self.period_prices[0]
@@ -227,7 +229,17 @@ class OrderBook:
         record[15: 15 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
         record[25: 25 + len(self.ask_prices_10)] = self.ask_prices_10
         record[35: 35 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
+        record[-2] = sum(self._period_transactions(update_interval, bs_flag=1)["vol"])
+        record[-1] = sum(self._period_transactions(update_interval, bs_flag=-1)["vol"])
         self.historical_orderbook.loc[len(self.historical_orderbook)] = record
+
+    def _period_transactions(self, update_interval, bs_flag):
+        res = self.historical_transaction.set_index("time")
+        if not res.empty:
+            return res[res["BSFlag"] == bs_flag].between_time((self.latest_time - update_interval).time(),
+                                                              self.latest_time.time())
+        else:
+            return res
 
     def get_order(self, uid, is_buy):
         if is_buy:

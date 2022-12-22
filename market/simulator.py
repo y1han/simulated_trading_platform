@@ -32,7 +32,7 @@ class Simulator:
         self.insert_historical_orders()
         if len(self.current_batch_orders) > 0 or strategy_orders is not None:
             self.order_book.auction_matching()
-            self.order_book.update_record()
+            self.order_book.update_record(update_interval)
         self.update_time(update_interval)
         return (self.current_time - update_interval).time()
 
