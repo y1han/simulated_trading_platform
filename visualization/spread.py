@@ -1,9 +1,7 @@
 import matplotlib.pyplot as plt
 from datetime import time, datetime
 from market import OrderBook
-
-OPEN_TIME = time(9, 30, 0)
-CLOSE_TIME = time(14, 57, 0)
+from visualization.config import *
 
 
 def draw_spread(orderbook: OrderBook, given_time: time):
@@ -23,4 +21,18 @@ def draw_historical_spread(orderbook: OrderBook, ignore_auction=True):
         ask_p = ask_p.between_time(OPEN_TIME, CLOSE_TIME)
     plt.plot(bid_p)
     plt.plot(ask_p)
+    plt.show()
+
+
+def draw_order_book_depth_trend(orderbook: OrderBook, moving_unit=0.01):
+    orderbook_series = orderbook.historical_orderbook.set_index("time").between_time(OPEN_TIME, CLOSE_TIME)
+    orderbook_series["bid_depth"] = 0
+    orderbook_series["ask_depth"] = 0
+    for i in range(1, 10):
+        orderbook_series["bid_depth"] += (orderbook_series["bid_p_" + str(i + 1)] - orderbook_series[
+            "bid_p_" + str(i)]) / moving_unit - 1
+        orderbook_series["ask_depth"] += (orderbook_series["ask_p_" + str(i + 1)] - orderbook_series[
+            "ask_p_" + str(i)]) / moving_unit - 1
+    orderbook_series[["bid_depth", "ask_depth"]].plot()
+    orderbook_series["close"].plot(secondary_y=True, alpha=0.5, color="grey")
     plt.show()

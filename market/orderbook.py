@@ -55,7 +55,6 @@ class OrderBook:
 
     def trade_matching(self, time_submitted):  # 连续竞价撮合
         if self._OPEN_TIME <= self.latest_time < self._AFTER_AUCTION_TIME:
-            self.period_prices = [self.period_prices[-1]] if len(self.period_prices) > 0 else []
             while self.best_bid >= self.best_ask:
                 bid = self.bid_list[0]
                 ask = self.ask_list[0]
@@ -87,7 +86,6 @@ class OrderBook:
     def auction_order_match(self, remaining_vol, auction_price):
         for bid in self.bid_list:
             if bid.price >= auction_price:
-                self.period_prices = [self.period_prices[-1]] if len(self.period_prices) > 0 else []
                 while bid.remaining_quantity != 0:
                     ask = self.ask_list[0]
                     vol = min(bid.remaining_quantity, ask.remaining_quantity)
@@ -110,6 +108,9 @@ class OrderBook:
 
                     self._postprocess_order(ask, self.latest_time)
             self._postprocess_order(bid, self.latest_time)
+
+    def period_prices_refresh(self):
+        self.period_prices = [self.period_prices[-1]] if len(self.period_prices) > 0 else []
 
     def _postprocess_order(self, order, time_submitted):
         if order.remaining_quantity == 0:

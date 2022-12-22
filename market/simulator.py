@@ -33,6 +33,7 @@ class Simulator:
         if len(self.current_batch_orders) > 0 or strategy_orders is not None:
             self.order_book.auction_matching()
             self.order_book.update_record(update_interval)
+        self.order_book.period_prices_refresh()
         self.update_time(update_interval)
         return (self.current_time - update_interval).time()
 
