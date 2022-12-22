@@ -11,7 +11,7 @@ class OrderBook:
         self.historical_order = []  # 历史订单列表
         self.historical_transaction = pd.DataFrame([],
                                                    columns=["time", "price", "vol", "bid_uid", "ask_uid",
-                                                            "is_ours", "our_direction"])  # 成交序列
+                                                            "is_ours", "our_direction", "BSFlag"])  # 成交序列
         self.historical_orderbook = pd.DataFrame([],
                                                  columns=["time"] +
                                                          ["open", "close", "high", "low"] +
@@ -62,13 +62,14 @@ class OrderBook:
 
                 is_ours, our_direction = check_our_orders(ask, bid)
                 trade_price = ask.price if bid.time_submitted > ask.time_submitted else bid.price
+                bs_flag = 1 if bid.time_submitted > ask.time_submitted else -1
 
                 bid.strike_price = update_strike_price(bid, trade_price, vol)
                 ask.strike_price = update_strike_price(ask, trade_price, vol)
                 self.historical_transaction.loc[len(self.historical_transaction)] = [time_submitted, trade_price,
                                                                                      vol, bid.uid,
                                                                                      ask.uid, is_ours,
-                                                                                     our_direction]
+                                                                                     our_direction, bs_flag]
                 self.period_prices.append(trade_price)
                 bid.matched_quantity += vol
                 ask.matched_quantity += vol
@@ -102,7 +103,7 @@ class OrderBook:
                         self.historical_transaction.loc[len(self.historical_transaction)] = [self.latest_time,
                                                                                              auction_price, matched_vol,
                                                                                              bid.uid, ask.uid,
-                                                                                             is_ours, our_direction]
+                                                                                             is_ours, our_direction, 0]
                         remaining_vol -= matched_vol
 
                     self._postprocess_order(ask, self.latest_time)

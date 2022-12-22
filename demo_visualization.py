@@ -12,5 +12,7 @@ end_time = time(hour=11, minute=30, second=0)
 while current_time < end_time:
     current_time = sim.next_step()
 
-draw_spread(sim.order_book, given_time=time(hour=9, minute=30, second=0))
-print(sim.order_book)
+# draw_spread(sim.order_book, given_time=time(hour=9, minute=30, second=0))
+# draw_historical_spread(sim.order_book)
+draw_corr_price_volume(sim.order_book, 3)
+# print(sim.order_book)
