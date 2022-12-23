@@ -3,7 +3,7 @@ from datetime import time
 from visualization import *
 
 
-sim = mkt.Simulator(code=688561, date=20220704)
+sim = mkt.Simulator(code=688093, date=20220704)
 
 sim.reset()
 current_time = time(hour=9, minute=15, second=0)
@@ -18,4 +18,5 @@ while current_time < end_time:
 # draw_practical_corr_price_volume(sim.order_book, 1)
 # draw_signature_plot_series(sim.order_book)
 # draw_cum_trading_volume(sim.order_book)
-draw_order_book_depth_trend(sim.order_book)
+# draw_order_book_depth_trend(sim.order_book)
+draw_price_series(sim.order_book)

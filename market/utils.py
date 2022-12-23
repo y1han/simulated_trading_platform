@@ -11,7 +11,7 @@ def auction_price_match(bid_p, ask_p, bid_vol, ask_vol):
             matching_ask_vol_idx = find_idx_gt(ask_vol_cum, bid_vol_cum[i])
             matching_ask_price_idx = find_idx_gt(ask_p, bid_price)
             if matching_ask_price_idx < matching_ask_vol_idx:
-                return ask_p[matching_ask_price_idx], ask_vol_cum[matching_ask_price_idx]
+                return ask_p[matching_ask_price_idx-1], ask_vol_cum[matching_ask_price_idx-1]
             else:
                 if bid_price < ask_p[matching_ask_vol_idx]:
                     return ask_p[matching_ask_vol_idx], bid_vol_cum[i - 1]

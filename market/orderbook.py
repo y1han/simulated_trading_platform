@@ -46,15 +46,15 @@ class OrderBook:
             self.trade_matching(time_submitted)
 
     def auction_matching(self):  # 集合竞价撮合
-        if self.latest_time <= self._OPEN_TIME:  # 盘前集合竞价
+        if self.latest_time <= self._PRE_AUCTION_MATCH_TIME:  # 盘前集合竞价
             if self.latest_time == self._PRE_AUCTION_MATCH_TIME:  # 盘前集中成交
                 self._auction_process()
-        elif self._AFTER_AUCTION_TIME <= self.latest_time <= self._AFTER_AUCTION_MATCH_TIME:  # 盘后集合竞价
+        elif self._AFTER_AUCTION_TIME < self.latest_time <= self._AFTER_AUCTION_MATCH_TIME:  # 盘后集合竞价
             if self.latest_time == self._AFTER_AUCTION_MATCH_TIME:  # 盘后集中成交
                 self._auction_process()
 
     def trade_matching(self, time_submitted):  # 连续竞价撮合
-        if self._OPEN_TIME <= self.latest_time < self._AFTER_AUCTION_TIME:
+        if self._OPEN_TIME <= self.latest_time <= self._AFTER_AUCTION_TIME:
             while self.best_bid >= self.best_ask:
                 bid = self.bid_list[0]
                 ask = self.ask_list[0]
@@ -125,11 +125,11 @@ class OrderBook:
 
     @property
     def best_ask(self):
-        return self.ask_list[0].price if len(self.ask_list) > 0 else 0
+        return self.ask_list[0].price if len(self.ask_list) > 0 else -1
 
     @property
     def best_bid(self):
-        return self.bid_list[0].price if len(self.bid_list) > 0 else 0
+        return self.bid_list[0].price if len(self.bid_list) > 0 else -2
 
     @property
     def bid_ask_spread(self):

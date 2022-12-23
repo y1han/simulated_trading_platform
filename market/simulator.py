@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta
 import pandas as pd
-import os
 from .orderbook import OrderBook
+from .orderflow_handling import *
 
 
 class Simulator:
     def __init__(self, code, file_path="./data/", date=None):
-        self.order_flow = self.read_order_flow(code, file_path, date)
+        self.order_flow = combined_order_transaction(code, file_path, date)
         self.submitted_order_flow = []
         self.date = datetime.strptime(str(self.order_flow["MDDate"][0]), '%Y%m%d')
         self.current_time = self.date + timedelta(hours=9, minutes=15, seconds=0)
@@ -16,29 +16,19 @@ class Simulator:
         self._break_time = [self.date + timedelta(hours=11, minutes=30, seconds=0),
                             self.date + timedelta(hours=13, minutes=0, seconds=0)]
 
-    @staticmethod
-    def read_order_flow(code, file_path="", date=None):
-        file_path = file_path + str(code) + "/"
-        order_files = [item for item in os.listdir(file_path) if "_O" in item]
-        res = pd.read_csv(file_path + order_files[0])
-        if date is None:
-            date = res["MDDate"][0]
-        return res[res["MDDate"] == date].reset_index(drop=True).sort_values(by=["MDDate", "MDTime"])
-
     def next_step(self, strategy_orders=None, update_interval=timedelta(seconds=3)):
         self.fetch_batch_orders(update_interval)
         self.order_book.latest_time = self.current_time
         self.insert_strategy_orders(strategy_orders)
         self.insert_historical_orders()
-        if len(self.current_batch_orders) > 0 or strategy_orders is not None:
-            self.order_book.auction_matching()
-            self.order_book.update_record(update_interval)
+        self.order_book.auction_matching()
+        self.order_book.update_record(update_interval)
         self.order_book.period_prices_refresh()
         self.update_time(update_interval)
         return (self.current_time - update_interval).time()
 
     def update_time(self, update_interval):
-        if self._break_time[0] <= self.current_time < self._break_time[1]:
+        if self._break_time[0] < self.current_time < self._break_time[1]:
             self.current_time = self._break_time[1]
         else:
             if self.current_time.minute in [0, 30] and self.current_time.second == 0:
@@ -47,8 +37,8 @@ class Simulator:
 
     def fetch_batch_orders(self, update_interval):
         self.current_batch_orders = self.order_flow[
-            (self.order_flow["MDTime"] < self.current_time) &
-            (self.order_flow["MDTime"] >= self.current_time - update_interval)]
+            (self.order_flow["MDTime"] <= self.current_time) &
+            (self.order_flow["MDTime"] > self.current_time - update_interval)]
 
     def insert_strategy_orders(self, strategy_orders):
         if strategy_orders is not None:
