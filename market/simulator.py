@@ -28,7 +28,7 @@ class Simulator:
         return (self.current_time - update_interval).time()
 
     def update_time(self, update_interval):
-        if self._break_time[0] < self.current_time < self._break_time[1]:
+        if self._break_time[0] <= self.current_time < self._break_time[1]:
             self.current_time = self._break_time[1]
         else:
             if self.current_time.minute in [0, 30] and self.current_time.second == 0:
