@@ -3,7 +3,7 @@ from datetime import time
 from visualization import *
 
 
-sim = mkt.Simulator(code=688363, date=20220704)
+sim = mkt.Simulator(code=688363, date=20221201)
 
 sim.reset()
 current_time = time(hour=9, minute=15, second=0)
