@@ -17,15 +17,15 @@ class Simulator:
                             self.date + timedelta(hours=13, minutes=0, seconds=0)]
 
     def next_step(self, strategy_orders=None, update_interval=timedelta(seconds=3)):
+        self.order_book.period_refresh()
         self.fetch_batch_orders(update_interval)
         self.order_book.latest_time = self.current_time
         self.insert_strategy_orders(strategy_orders)
         self.insert_historical_orders()
         self.order_book.auction_matching()
         self.order_book.update_record(update_interval)
-        self.order_book.period_prices_refresh()
         self.update_time(update_interval)
-        return (self.current_time - update_interval).time()
+        return self.current_time - update_interval
 
     def update_time(self, update_interval):
         if self._break_time[0] <= self.current_time < self._break_time[1]:

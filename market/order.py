@@ -24,8 +24,8 @@ class Order:
     quantity: int = 0
     price: float = 0
     time_submitted: Optional[datetime.datetime] = None
-    strike_price: Optional[float] = None
     matched_quantity: int = 0
+    trade_money: float = 0
     time_finished: Optional[datetime.datetime] = None
     # active: Optional[bool] = True
     is_ours: Optional[bool] = False
@@ -33,6 +33,14 @@ class Order:
     @property
     def remaining_quantity(self):
         return self.quantity - self.matched_quantity
+
+    @property
+    def strike_price(self):
+        return self.trade_money / self.matched_quantity if self.matched_quantity > 0 else None
+
+    @property
+    def bs_flag(self):
+        return 1 if self.is_buy else -1
 
     def __str__(self):
         return {
@@ -48,3 +56,14 @@ class Order:
             # "是否激活": self.active,
             "是否为本方订单": self.is_ours
         }
+
+    def __hash__(self):
+        return hash(self.uid)
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return self.uid == other.uid
+
+    def __lt__(self, other):
+        return abs(self.uid) < abs(other.uid)

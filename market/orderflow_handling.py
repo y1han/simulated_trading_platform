@@ -57,4 +57,7 @@ def combined_order_transaction(code, file_path="", date=None):
         ["MDDate", "MDTime", "OrderNO", "OrderType", "OrderPrice", "OrderBSFlag", "OrderQty"]]
 
     order_flow = pd.concat([order_flow, appended_data_bid, appended_data_ask])
-    return order_flow.sort_values(by=["MDDate", "MDTime", "OrderNO"]).reset_index(drop=True)
+    order_flow = order_flow.sort_values(by=["MDDate", "MDTime", "OrderNO"]).reset_index(drop=True)
+    delta = order_flow.groupby(order_flow["MDTime"]).cumcount()
+    order_flow["MDTime"] += delta
+    return order_flow

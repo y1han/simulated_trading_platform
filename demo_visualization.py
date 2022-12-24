@@ -2,8 +2,7 @@ import market as mkt
 from datetime import time
 from visualization import *
 
-
-sim = mkt.Simulator(code=688363, date=20221201)
+sim = mkt.Simulator(code=688093, date=20220718)
 
 sim.reset()
 current_time = time(hour=9, minute=15, second=0)

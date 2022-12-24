@@ -39,7 +39,7 @@ def auction_price_match(bid_p, ask_p, bid_vol, ask_vol):
             elif optimal_non_matching_vol_ask > optimal_non_matching_vol_bid:
                 optimal_price = optimal_price_bid
             else:
-                optimal_price = (optimal_price_ask + optimal_price_bid) / 2
+                optimal_price = min(optimal_price_ask, optimal_price_bid)
         optimal_vol = max(optimal_vol_ask, optimal_vol_bid)
         return optimal_price, optimal_vol
     else:
