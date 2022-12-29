@@ -22,7 +22,7 @@ class OrderBook:
                                                          ["bid_v_" + str(i) for i in range(1, 11)] +
                                                          ["ask_p_" + str(i) for i in range(1, 11)] +
                                                          ["ask_v_" + str(i) for i in range(1, 11)] +
-                                                         ["buy_volume", "sell_volume"]
+                                                         ["buy_volume", "sell_volume", "volume_diff", "return"]
                                                  )
         self.latest_time = current_time
         self.period_prices = []
@@ -61,7 +61,7 @@ class OrderBook:
 
     def trade_matching(self, time_submitted):  # 连续竞价撮合
         if self._OPEN_TIME <= self.latest_time <= self._AFTER_AUCTION_TIME:
-            while self.best_bid >= self.best_ask:
+            while self.best_bid >= self.best_ask and len(self.ask_list) > 0:
                 bid = self.bid_list[0]
                 ask = self.ask_list[0]
 
@@ -88,13 +88,14 @@ class OrderBook:
     def _auction_process(self):
         auction_price, auction_vol = auction_price_match(bid_p=self._bid_prices, ask_p=self._ask_prices,
                                                          bid_vol=self._bid_vol, ask_vol=self._ask_vol)
-        self.auction_order_match(remaining_vol=auction_vol, auction_price=auction_price)
+        if auction_price != np.nan:
+            self.auction_order_match(remaining_vol=auction_vol, auction_price=auction_price)
 
     # 集合竞价订单提交
     def auction_order_match(self, remaining_vol, auction_price):
         for bid in self.bid_list:
             if bid.price >= auction_price:
-                while bid.remaining_quantity != 0:
+                while bid.remaining_quantity != 0 and len(self.ask_list) > 0:
                     ask = self.ask_list[0]
                     vol = min(bid.remaining_quantity, ask.remaining_quantity)
 
@@ -139,15 +140,15 @@ class OrderBook:
 
     @property
     def is_trading(self):
-        return self._OPEN_TIME <= self.latest_time <= self._AFTER_AUCTION_TIME
+        return self._OPEN_TIME <= self.latest_time < self._AFTER_AUCTION_TIME
 
     @property
     def best_ask(self):
-        return self.ask_list[0].price if len(self.ask_list) > 0 else -1
+        return self.ask_list[0].price if len(self.ask_list) > 0 else np.inf
 
     @property
     def best_bid(self):
-        return self.bid_list[0].price if len(self.bid_list) > 0 else -2
+        return self.bid_list[0].price if len(self.bid_list) > 0 else -1
 
     @property
     def bid_ask_spread(self):
@@ -164,6 +165,14 @@ class OrderBook:
     @property
     def latest_transaction_price(self):
         return self.historical_transaction.iloc[-1]["price"]
+
+    @property
+    def matched_quantity(self):
+        return sum(self.historical_transaction["vol"])
+
+    @property
+    def trade_money(self):
+        return sum(self.historical_transaction["price"] * self.historical_transaction["vol"])
 
     @property
     def bid_prices_10(self):
@@ -247,19 +256,21 @@ class OrderBook:
         return [sum([i.remaining_quantity for i in self.ask_list if i.price == p]) for p in self._ask_prices]
 
     def update_record(self, update_interval):
-        record = [np.nan] * 47
+        record = [np.nan] * 49
         record[0] = self.latest_time
         if len(self.period_prices) > 0:
             record[1] = self.period_prices[0]
             record[2] = self.period_prices[-1]
             record[3] = max(self.period_prices)
             record[4] = min(self.period_prices)
+            record[-1] = self.period_prices[-1] / self.historical_orderbook.iloc[-1]["close"] - 1
         record[5: 5 + len(self.bid_prices_10)] = self.bid_prices_10
         record[15: 15 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
         record[25: 25 + len(self.ask_prices_10)] = self.ask_prices_10
         record[35: 35 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
-        record[-2] = sum(self._period_transactions(update_interval, bs_flag=1)["vol"])
-        record[-1] = sum(self._period_transactions(update_interval, bs_flag=-1)["vol"])
+        record[-4] = sum(self._period_transactions(update_interval, bs_flag=1)["vol"])
+        record[-3] = sum(self._period_transactions(update_interval, bs_flag=-1)["vol"])
+        record[-2] = record[-4] - record[-3]
         self.historical_orderbook.loc[len(self.historical_orderbook)] = record
 
     def _period_transactions(self, update_interval, bs_flag):
@@ -294,3 +305,11 @@ class OrderBook:
                                                                  'bid_p': self.bid_prices_10,
                                                                  'ask_p': self.ask_prices_10,
                                                                  'ask_v': self.ask_vol_10})))
+
+    @property
+    def OPEN_TIME(self):
+        return self._OPEN_TIME
+
+    @property
+    def PRE_AUCTION_MATCH_TIME(self):
+        return self._PRE_AUCTION_MATCH_TIME
