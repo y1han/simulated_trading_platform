@@ -90,7 +90,7 @@ class Portfolio:
             self.cash += round(-sum(order.trade_money * order.bs_flag for order in period_order_set), 2)
 
     def transaction_cost(self, trading_cost_pct=0.001):
-        return sum(round(order.trade_money * trading_cost_pct, 2) for order in self.historical_orders)
+        return round(self.trade_money_sell * trading_cost_pct, 2)
 
     def update_portfolio(self, orderbook: OrderBook, current_time: datetime):
         if current_time == orderbook.PRE_AUCTION_MATCH_TIME and self.initial_wealth == self.initial_cash + self.inventory_cost:
