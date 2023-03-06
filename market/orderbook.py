@@ -267,7 +267,7 @@ class OrderBook:
         record[5: 5 + len(self.bid_prices_10)] = self.bid_prices_10
         record[15: 15 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
         record[25: 25 + len(self.ask_prices_10)] = self.ask_prices_10
-        record[35: 35 + len(self.bid_cum_vol_10)] = self.bid_cum_vol_10
+        record[35: 35 + len(self.ask_cum_vol_10)] = self.ask_cum_vol_10
         record[-4] = sum(self._period_transactions(update_interval, bs_flag=1)["vol"])
         record[-3] = sum(self._period_transactions(update_interval, bs_flag=-1)["vol"])
         record[-2] = record[-4] - record[-3]
